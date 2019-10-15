@@ -1,0 +1,15 @@
+[package]
+name = "tokio-proxy"
+version = "0.1.0"
+authors = ["Jinhua Luo <home_king@163.com>"]
+edition = "2018"
+
+[dependencies]
+tokio = "0.2.0-alpha.5"
+tokio-net = "0.2.0-alpha.5"
+url = "2.1.0"
+bytes = "0.4.12"
+log = "0.4"
+
+[dev-dependencies]
+tokio-socks5 = { git = 'https://github.com/kingluo/tokio-socks5' }
