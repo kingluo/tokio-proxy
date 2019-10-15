@@ -13,3 +13,6 @@ log = "0.4"
 
 [dev-dependencies]
 tokio-socks5 = { git = 'https://github.com/kingluo/tokio-socks5' }
+
+[patch.crates-io]
+tokio = { git = 'https://github.com/kingluo/tokio', branch = "patch-split" }
