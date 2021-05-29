@@ -5,14 +5,7 @@ authors = ["Jinhua Luo <home_king@163.com>"]
 edition = "2018"
 
 [dependencies]
-tokio = "0.2.0-alpha.5"
-tokio-net = "0.2.0-alpha.5"
+tokio = { version = "1", features = ["full"] }
 url = "2.1.0"
 bytes = "0.4.12"
 log = "0.4"
-
-[dev-dependencies]
-tokio-socks5 = { git = 'https://github.com/kingluo/tokio-socks5' }
-
-[patch.crates-io]
-tokio = { git = 'https://github.com/kingluo/tokio', branch = "patch-split" }

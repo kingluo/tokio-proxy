@@ -3,9 +3,10 @@ use log::*;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::lookup_host;
 use tokio::net::TcpStream;
-use tokio::prelude::*;
-use tokio_net::ToSocketAddrs;
+use tokio::net::ToSocketAddrs;
 use url::Url;
 
 pub trait ToSocketAddrsExt: ToSocketAddrs {
@@ -69,6 +70,7 @@ pub async fn connect<A: ToSocketAddrsExt, T: AsRef<str>>(
     addr: A,
     proxy_url: T,
 ) -> io::Result<TcpStream> {
+    let addr2 = addr.to_string2();
     let proxy_url = match Url::parse(proxy_url.as_ref()) {
         Ok(url) => url,
         Err(err) => {
@@ -82,7 +84,7 @@ pub async fn connect<A: ToSocketAddrsExt, T: AsRef<str>>(
     let mut addrs = Vec::new();
     let max_tries = match proxy_url.scheme() {
         "socks5" => {
-            addrs = addr.to_socket_addrs().await?.collect();
+            addrs = lookup_host(addr).await?.collect();
             addrs.len()
         }
         "socks5h" => 1,
@@ -131,7 +133,7 @@ pub async fn connect<A: ToSocketAddrsExt, T: AsRef<str>>(
                 buf.put_u16_be(addr.port());
             }
             "socks5h" => {
-                let addr = addr.to_string2();
+                let addr = addr2.clone();
                 trace!("connect {}", addr);
                 let idx = addr.rfind(':').unwrap();
                 let host = String::from(&addr[..idx]);
@@ -190,51 +192,4 @@ pub async fn connect<A: ToSocketAddrsExt, T: AsRef<str>>(
     }
 
     Err(io::Error::new(io::ErrorKind::Other, "failed to connect"))
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_echo() {
-        use std::net::SocketAddr;
-        use tokio::net::TcpListener;
-        use tokio::prelude::*;
-        use tokio_socks5::run_socks5;
-
-        let rt = tokio::runtime::Builder::new().build().unwrap();
-
-        rt.spawn(async move {
-            run_socks5("127.0.0.1:40000".parse::<SocketAddr>().unwrap(), None)
-                .await
-                .unwrap();
-        });
-
-        rt.spawn(async move {
-            let mut listener = TcpListener::bind(&"127.0.0.1:30000").await.unwrap();
-            let (mut socket, _) = listener.accept().await.unwrap();
-            let mut buf = [0; 1024];
-
-            let n = socket
-                .read(&mut buf)
-                .await
-                .expect("failed to read data from socket");
-
-            if n > 0 {
-                socket
-                    .write_all(&buf[0..n])
-                    .await
-                    .expect("failed to write data to socket");
-            }
-        });
-
-        rt.block_on(async move {
-            let mut s = super::connect("localhost:30000", "socks5h://127.0.0.1:40000")
-                .await
-                .unwrap();
-            s.write_all(b"hello").await.unwrap();
-            let mut buf = [0; 1024];
-            let len = s.read(&mut buf).await.unwrap();
-            assert_eq!(String::from_utf8_lossy(&buf[..len]), "hello");
-        });
-    }
 }
